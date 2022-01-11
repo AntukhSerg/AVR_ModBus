@@ -12,7 +12,7 @@ void main( void )
 InitModBus();
 sei(); //глобальное разрешение прерываний
 while(1)
-  {
+  {Quoting code
   CheckModBus();
   } //end while(1)
 } //end main()
@@ -49,8 +49,8 @@ while (1)
 ```
 it is necessary to initialize the InitModBus () protocol, and periodically run
 the CheckModBus () function to check for a request and form / send a response.
-data is entered in advance into global variables RegNum0x [], RegNum1x [], RegNum3x [],
-* RegNum4x [] and taken from them. Variables RegNumYx [] correspond to register numbers:
+data is entered in advance into global variables RegNum0x [], RegNum1x [], RegNum3x [], RegNum4x [] and taken from them. 
+* Variables RegNumYx [] correspond to register numbers:
 * 0x - 1 - 9999 - Read / Write Discrete Output Coils (DO)
 * 1x - 10001-19999 - Reading Discrete Input Contacts (DI)
 * 3x - 30001-39999 - Reading Analog Input Registers (AI)
