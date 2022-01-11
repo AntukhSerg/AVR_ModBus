@@ -12,7 +12,7 @@ void main( void )
 InitModBus();
 sei(); //глобальное разрешение прерываний
 while(1)
-  {Quoting code
+  {
   CheckModBus();
   } //end while(1)
 } //end main()
