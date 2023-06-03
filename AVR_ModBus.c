@@ -1,4 +1,4 @@
-//ATmega8
+//ATmega8, ATmega16
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <stdbool.h>
@@ -8,13 +8,13 @@
 #define Hi(Int) (char) (Int>>8)
 #define Low(Int) (char) (Int)
 
-unsigned char RcCount, TrCount;  //счетчик принятых/переданных данных
-bool StartRec = false;// false/true начало/прием посылки
-bool bModBus = false;  //флаг обработки посылки
-unsigned char cNumRcByte0; //кол-во принятых байт
-unsigned char cNumTrByte0;  //кол-во передаваемых байт
-unsigned char cmRcBuf0[MAX_LENGHT_REC_BUF] ; //буфер принимаемых данных
-unsigned char cmTrBuf0[MAX_LENGHT_TR_BUF] ; //буфер передаваемых данных
+unsigned char RcCount, TrCount;  //СЃС‡РµС‚С‡РёРє РїСЂРёРЅСЏС‚С‹С…/РїРµСЂРµРґР°РЅРЅС‹С… РґР°РЅРЅС‹С…
+bool StartRec = false;// false/true РЅР°С‡Р°Р»Рѕ/РїСЂРёРµРј РїРѕСЃС‹Р»РєРё
+bool bModBus = false;  //С„Р»Р°Рі РѕР±СЂР°Р±РѕС‚РєРё РїРѕСЃС‹Р»РєРё
+unsigned char cNumRcByte0; //РєРѕР»-РІРѕ РїСЂРёРЅСЏС‚С‹С… Р±Р°Р№С‚
+unsigned char cNumTrByte0;  //РєРѕР»-РІРѕ РїРµСЂРµРґР°РІР°РµРјС‹С… Р±Р°Р№С‚
+unsigned char cmRcBuf0[MAX_LENGHT_REC_BUF]; //Р±СѓС„РµСЂ РїСЂРёРЅРёРјР°РµРјС‹С… РґР°РЅРЅС‹С…
+unsigned char cmTrBuf0[MAX_LENGHT_TR_BUF]; //Р±СѓС„РµСЂ РїРµСЂРµРґР°РІР°РµРјС‹С… РґР°РЅРЅС‹С…
 
 unsigned char ModBus(unsigned char NumByte);
 char Func01(void);
@@ -23,37 +23,38 @@ char Func03(void);
 char Func04(void);
 char Func05(void);
 char Func06(void);
+char Func16(void);
 char ErrorMessage(char Error);
-unsigned int GetCRC16(unsigned char *buf, unsigned char bufsize);
+unsigned int GetCRC16(unsigned char* buf, unsigned char bufsize);
 
 
 
-//настройка UART
+//РЅР°СЃС‚СЂРѕР№РєР° UART
 void InitModBus(void)
 {
-UBRRHi = Hi(BAUD_DIVIDER);
-UBRRLow = Low(BAUD_DIVIDER);
-UCSRA_CLR();
-UCSRB_SET();
-UCSRC_SET();
-//останавливаем таймер0
-StopTimer0();
-//разрешаем прерывание по переполнению таймера0
-Timer0InterruptEnable(); 
+	UBRRHi = Hi(BAUD_DIVIDER);
+	UBRRLow = Low(BAUD_DIVIDER);
+	UCSRA_CLR();
+	UCSRB_SET();
+	UCSRC_SET();
+	//РѕСЃС‚Р°РЅР°РІР»РёРІР°РµРј С‚Р°Р№РјРµСЂ0
+	StopTimer0();
+	//СЂР°Р·СЂРµС€Р°РµРј РїСЂРµСЂС‹РІР°РЅРёРµ РїРѕ РїРµСЂРµРїРѕР»РЅРµРЅРёСЋ С‚Р°Р№РјРµСЂР°0
+	Timer0InterruptEnable();
 }//end InitModBus()
 
 
 void CheckModBus(void)
 {
-if (bModBus)
+	if (bModBus)
 	{
-	cNumTrByte0=ModBus(cNumRcByte0); //обработка принятого соообщения ModBus
-	if (cNumTrByte0!=0)
+		cNumTrByte0 = ModBus(cNumRcByte0); //РѕР±СЂР°Р±РѕС‚РєР° РїСЂРёРЅСЏС‚РѕРіРѕ СЃРѕРѕРѕР±С‰РµРЅРёСЏ ModBus
+		if (cNumTrByte0 != 0)
 		{
-		TrCount=0;
-		StartTrans();
+			TrCount = 0;
+			StartTrans();
 		} //end if (cNumTrByte0!=0)
-	bModBus=false;
+		bModBus = false;
 	} //end if (bModBus)
 } //end CheckModBus(void)
 
@@ -62,366 +63,434 @@ if (bModBus)
 
 unsigned char ModBus(unsigned char NumByte)
 {
-int CRC16;
-unsigned char i;
+	int CRC16;
+	unsigned char i;
 
-if (cmRcBuf0[0]!=SLAVE_ID) return 0x00; //broadcast запрос, ответ не нужен
+	if (cmRcBuf0[0] != SLAVE_ID) return 0x00; //broadcast Р·Р°РїСЂРѕСЃ, РѕС‚РІРµС‚ РЅРµ РЅСѓР¶РµРЅ
 
-CRC16 = GetCRC16(cmRcBuf0, NumByte);
-if (CRC16) return 0;  //контрольная сумма не совпадает, ответ не нужен
+	CRC16 = GetCRC16(cmRcBuf0, NumByte);
+	if (CRC16) return 0;  //РєРѕРЅС‚СЂРѕР»СЊРЅР°СЏ СЃСѓРјРјР° РЅРµ СЃРѕРІРїР°РґР°РµС‚, РѕС‚РІРµС‚ РЅРµ РЅСѓР¶РµРЅ
 
-//проверки прошли успешно начинаем формировать ответ на запрос
-//данные для ответа заносятся в массив cmTrBuf0[]
-//!!!!! адреса и данные двубайтные заносятся старшим байтом вперед (Hi, Low)
-//!!!!! CRC заноситься младшим байтом вперед (Low, Hi) 
+	//РїСЂРѕРІРµСЂРєРё РїСЂРѕС€Р»Рё СѓСЃРїРµС€РЅРѕ РЅР°С‡РёРЅР°РµРј С„РѕСЂРјРёСЂРѕРІР°С‚СЊ РѕС‚РІРµС‚ РЅР° Р·Р°РїСЂРѕСЃ
+	//РґР°РЅРЅС‹Рµ РґР»СЏ РѕС‚РІРµС‚Р° Р·Р°РЅРѕСЃСЏС‚СЃСЏ РІ РјР°СЃСЃРёРІ cmTrBuf0[]
+	//!!!!! Р°РґСЂРµСЃР° Рё РґР°РЅРЅС‹Рµ РґРІСѓР±Р°Р№С‚РЅС‹Рµ Р·Р°РЅРѕСЃСЏС‚СЃСЏ СЃС‚Р°СЂС€РёРј Р±Р°Р№С‚РѕРј РІРїРµСЂРµРґ (Hi, Low)
+	//!!!!! CRC Р·Р°РЅРѕСЃРёС‚СЊСЃСЏ РјР»Р°РґС€РёРј Р±Р°Р№С‚РѕРј РІРїРµСЂРµРґ (Low, Hi) 
 
-cmTrBuf0[0]=SLAVE_ID;//адрес устройства
+	cmTrBuf0[0] = SLAVE_ID;//Р°РґСЂРµСЃ СѓСЃС‚СЂРѕР№СЃС‚РІР°
 
-for(i=1; i<(MAX_LENGHT_TR_BUF); i++) //очищаем буфер для данных
+	for (i = 1; i < (MAX_LENGHT_TR_BUF); i++) //РѕС‡РёС‰Р°РµРј Р±СѓС„РµСЂ РґР»СЏ РґР°РЅРЅС‹С…
 	{
-	cmTrBuf0[i]=0;
+		cmTrBuf0[i] = 0;
 	}//end for()
 
-//код команды
-switch(cmRcBuf0[1]) 
+  //РєРѕРґ РєРѕРјР°РЅРґС‹
+	switch (cmRcBuf0[1])
 	{
-    case 0x01: 
-		{
-		if(!QUANTITY_REG_0X) return ErrorMessage(0x01);
+	case 0x01:
+	{
+		if (!QUANTITY_REG_0X) return ErrorMessage(ERR_ILLEGAL_FUNCTION);
 		return Func01();
-		}
-	
-	case 0x02: 
-		{
-		if(!QUANTITY_REG_1X) return ErrorMessage(0x01);
+	}
+
+	case 0x02:
+	{
+		if (!QUANTITY_REG_1X) return ErrorMessage(ERR_ILLEGAL_FUNCTION);
 		return Func02();
-		}
-		
-	case 0x03: 
-		{
-		if(!QUANTITY_REG_4X) return ErrorMessage(0x01);
+	}
+
+	case 0x03:
+	{
+		if (!QUANTITY_REG_4X) return ErrorMessage(ERR_ILLEGAL_FUNCTION);
 		return Func03();
-		}
-		
-	case 0x04: 
-		{
-		if(!QUANTITY_REG_3X) return ErrorMessage(0x01);
+	}
+
+	case 0x04:
+	{
+		if (!QUANTITY_REG_3X) return ErrorMessage(ERR_ILLEGAL_FUNCTION);
 		return Func04();
-		}
-		
-    case 0x05: 
-		{
-		if(!QUANTITY_REG_0X) return ErrorMessage(0x01);
+	}
+
+	case 0x05:
+	{
+		if (!QUANTITY_REG_0X) return ErrorMessage(ERR_ILLEGAL_FUNCTION);
 		return Func05();
-		}
-		
-	case 0x06: 
-		{
-		if(!QUANTITY_REG_4X) return ErrorMessage(0x01);
+	}
+
+	case 0x06:
+	{
+		if (!QUANTITY_REG_4X) return ErrorMessage(ERR_ILLEGAL_FUNCTION);
 		return Func06();
-		}
-		
-    default:   return ErrorMessage(0x01); //Принятый код функции не может быть обработан
+	}
+
+	case 0x10:
+	{
+		if (!QUANTITY_REG_4X) return ErrorMessage(ERR_ILLEGAL_FUNCTION);
+		return Func16();
+	}
+
+	default:   return ErrorMessage(ERR_ILLEGAL_FUNCTION); //РџСЂРёРЅСЏС‚С‹Р№ РєРѕРґ С„СѓРЅРєС†РёРё РЅРµ РјРѕР¶РµС‚ Р±С‹С‚СЊ РѕР±СЂР°Р±РѕС‚Р°РЅ
 	} //end switch
 } //end ModBus()
 
 
 
-//функция вычисляет код CRC-16
-//на входе указатель на начало буфера
-//и количество байт сообщения (без принятого кода CRC-16)
-unsigned int GetCRC16(unsigned char *buf, unsigned char bufsize)
+//С„СѓРЅРєС†РёСЏ РІС‹С‡РёСЃР»СЏРµС‚ РєРѕРґ CRC-16
+//РЅР° РІС…РѕРґРµ СѓРєР°Р·Р°С‚РµР»СЊ РЅР° РЅР°С‡Р°Р»Рѕ Р±СѓС„РµСЂР°
+//Рё РєРѕР»РёС‡РµСЃС‚РІРѕ Р±Р°Р№С‚ СЃРѕРѕР±С‰РµРЅРёСЏ (Р±РµР· РїСЂРёРЅСЏС‚РѕРіРѕ РєРѕРґР° CRC-16)
+unsigned int GetCRC16(unsigned char* buf, unsigned char bufsize)
 {
-unsigned int crc = 0xFFFF;
-unsigned char i;
+	unsigned int crc = 0xFFFF;
+	unsigned char i;
 
-for (i = 0; i < bufsize; i++) 
-crc = _crc16_update(crc, buf[i]);//подсчет CRC в принятой посылке
-return crc;
+	for (i = 0; i < bufsize; i++)
+		crc = _crc16_update(crc, buf[i]);//РїРѕРґСЃС‡РµС‚ CRC РІ РїСЂРёРЅСЏС‚РѕР№ РїРѕСЃС‹Р»РєРµ
+	return crc;
 } //end GetCRC16()
 
 
 
-//формирование ответа об ошибке
+//С„РѕСЂРјРёСЂРѕРІР°РЅРёРµ РѕС‚РІРµС‚Р° РѕР± РѕС€РёР±РєРµ
 char ErrorMessage(char Error)
 {
-int CRC16;
+	int CRC16;
 
-cmTrBuf0[1]=cmRcBuf0[1]+0x80;//команда с ошибкой
-cmTrBuf0[2]=Error;
-CRC16=GetCRC16(cmTrBuf0,3);//подсчет КС посылки
-cmTrBuf0[3]=Low(CRC16);
-cmTrBuf0[4]=Hi(CRC16);
+	cmTrBuf0[1] = cmRcBuf0[1] + 0x80;//РєРѕРјР°РЅРґР° СЃ РѕС€РёР±РєРѕР№
+	cmTrBuf0[2] = Error;
+	CRC16 = GetCRC16(cmTrBuf0, 3);//РїРѕРґСЃС‡РµС‚ РљРЎ РїРѕСЃС‹Р»РєРё
+	cmTrBuf0[3] = Low(CRC16);
+	cmTrBuf0[4] = Hi(CRC16);
 
-return 5;
+	return 5;
 } //end ErrorMessage()
 
 
 
-//---------------------------Функции ModBus-------------------------------
+//---------------------------Р¤СѓРЅРєС†РёРё ModBus-------------------------------
 
 #define start_adress ((cmRcBuf0[2]<<8) + cmRcBuf0[3])
 #define quantity_registers ((cmRcBuf0[4]<<8) + cmRcBuf0[5])
 #define data_byte ((quantity_registers+7)/8)
-#define data_2byte (2*quantity_registers) //данные двухбайтные
+#define data_2byte (2*quantity_registers) //РґР°РЅРЅС‹Рµ РґРІСѓС…Р±Р°Р№С‚РЅС‹Рµ
 #define max_adress (start_adress + quantity_registers)
 #define reg_adress (start_adress)
 #define value (quantity_registers)
-//побитовая запись
+#define num_to_write (cmRcBuf0[6]) // РєРѕР»РёС‡РµСЃС‚РІРѕ Р±Р°Р№С‚ РґР°РЅРЅС‹С… РґР»СЏ Р·Р°РїРёСЃРё РІ С„СѓРЅРєС†РёРё 0x10
+#define data_pointer (cmRcBuf0 + 7) // СѓРєР°Р·Р°С‚РµР»СЊ РЅР° РґР°РЅРЅС‹Рµ РґР»СЏ Р·Р°РїРёСЃРё РІ СЂРµРіРёСЃС‚СЂС‹
+//РїРѕР±РёС‚РѕРІР°СЏ Р·Р°РїРёСЃСЊ
 #define I_byte (reg_adress/8)
 #define I_bit (reg_adress%8)
-//побитовая запись с учетом смещения адреса
+//РїРѕР±РёС‚РѕРІР°СЏ Р·Р°РїРёСЃСЊ СЃ СѓС‡РµС‚РѕРј СЃРјРµС‰РµРЅРёСЏ Р°РґСЂРµСЃР°
 #define I_byte_ofset(x) ((start_adress+x)/8)
 #define I_bit_ofset(x) ((start_adress+x)%8)
-#define NextBit(y,x) RegNum##y[I_byte_ofset(x)] & (1<<I_bit_ofset(x))	
+#define NextBit(y,x) RegNum##y[I_byte_ofset(x)] & (1<<I_bit_ofset(x)) 
 #define ClrBitOfByte(ByteA, x) (ByteA &= ~(1<<(x)))
 
 
+/*
+* РџСЂРѕРІРµСЂСЏРµС‚ РІС…РѕРґРЅС‹Рµ РґР°РЅРЅС‹Рµ РЅР° СЃРѕРѕС‚РІРµС‚СЃС‚РІРёРµ Р’Р°С€РёРј СЂРµРіРёСЃС‚СЂР°Рј
+* Р’РѕР·РІСЂР°С‰Р°РµС‚ РєРѕРґ РѕС€РёР±РєРё:
+* 0 - РґР°РЅРЅС‹Рµ РІР°Р»РёРґРЅС‹
+* 2 - ILLEGAL_DATA_ADDRESS
+* 3 - ILLEGAL_DATA_VALUE
+*/
+uint8_t check_request(int reg, int num)
+{
+	if (reg < 0 || reg > QUANTITY_REG_4X)
+		return ERR_ILLEGAL_DATA_ADDRESS; //РђРґСЂРµСЃ РґР°РЅРЅС‹С…, СѓРєР°Р·Р°РЅРЅС‹Р№ РІ Р·Р°РїСЂРѕСЃРµ, РЅРµРґРѕСЃС‚СѓРїРµРЅ
+	if ((reg + num) > QUANTITY_REG_4X)
+		return ERR_ILLEGAL_DATA_VALUE;  // РљРѕР»РёС‡РµСЃС‚РІРѕ СЂРµРіРёСЃС‚СЂРѕРІ РІС‹С…РѕРґРёС‚ Р·Р° СЂРµР°Р»СЊРЅРѕРµ РєРѕР»РёС‡РµСЃС‚РІРѕ СЂРµРіРёСЃС‚СЂРѕРІ
+	return ERR_NONE;
+}
 
-//реализация функции 0х01
-//чтение значений из нескольких регистров флагов (Read Coil Status)
+
+
+//СЂРµР°Р»РёР·Р°С†РёСЏ С„СѓРЅРєС†РёРё 0С…01
+//С‡С‚РµРЅРёРµ Р·РЅР°С‡РµРЅРёР№ РёР· РЅРµСЃРєРѕР»СЊРєРёС… СЂРµРіРёСЃС‚СЂРѕРІ С„Р»Р°РіРѕРІ (Read Coil Status)
 char Func01(void)
 {
-unsigned int CRC16;
-unsigned char i;
+	unsigned int CRC16;
+	unsigned char i;
 
-//проверка корректного адреса в запросе
-if(!(max_adress<=QUANTITY_REG_0X)) return ErrorMessage(0x02); //Адрес данных, указанный в запросе, недоступен
-if(!quantity_registers) return 0;//проверяем что количество регистров на чтение > 0
+	//РїСЂРѕРІРµСЂРєР° РєРѕСЂСЂРµРєС‚РЅРѕРіРѕ Р°РґСЂРµСЃР° РІ Р·Р°РїСЂРѕСЃРµ Рё РєРѕР»РёС‡РµСЃС‚РІРѕ СЂРµРіРёСЃС‚СЂРѕРІ РЅР° С‡С‚РµРЅРёРµ
+	char err = check_request(start_adress, quantity_registers);
+	if (err != ERR_NONE)
+		return ErrorMessage(err);
 
-//формируем ответ
-cmTrBuf0[1] = 0x01;//команда
-cmTrBuf0[2] = data_byte;//количество байт данных в ответе
+	//С„РѕСЂРјРёСЂСѓРµРј РѕС‚РІРµС‚
+	cmTrBuf0[1] = 0x01;//РєРѕРјР°РЅРґР°
+	cmTrBuf0[2] = data_byte;//РєРѕР»РёС‡РµСЃС‚РІРѕ Р±Р°Р№С‚ РґР°РЅРЅС‹С… РІ РѕС‚РІРµС‚Рµ
 
-for(i=0; i<quantity_registers; i++) 
+	for (i = 0; i < quantity_registers; i++)
 	{
-	cmTrBuf0[3+i/8] |= ((bool)(NextBit(0x,i))<<(i%8)); //данные
+		cmTrBuf0[3 + i / 8] |= ((bool)(NextBit(0x, i)) << (i % 8)); //РґР°РЅРЅС‹Рµ
 	}//end for()
-CRC16=GetCRC16(cmTrBuf0,data_byte+3);//подсчет КС посылки
-cmTrBuf0[3+data_byte]=Low(CRC16);
-cmTrBuf0[4+data_byte]=Hi(CRC16);
-return (5+data_byte);
+	CRC16 = GetCRC16(cmTrBuf0, data_byte + 3);//РїРѕРґСЃС‡РµС‚ РљРЎ РїРѕСЃС‹Р»РєРё
+	cmTrBuf0[3 + data_byte] = Low(CRC16);
+	cmTrBuf0[4 + data_byte] = Hi(CRC16);
+	return (5 + data_byte);
 } //end Func01(void)
 
 
 
 
-//реализация функции 0х02
-//чтение значений из нескольких регистров флагов (Read Input Status)
+//СЂРµР°Р»РёР·Р°С†РёСЏ С„СѓРЅРєС†РёРё 0С…02
+//С‡С‚РµРЅРёРµ Р·РЅР°С‡РµРЅРёР№ РёР· РЅРµСЃРєРѕР»СЊРєРёС… СЂРµРіРёСЃС‚СЂРѕРІ С„Р»Р°РіРѕРІ (Read Input Status)
 char Func02(void)
 {
-unsigned int CRC16;
-unsigned char i;
+	unsigned int CRC16;
+	unsigned char i;
 
-//проверка корректного адреса в запросе
-if(!(max_adress<=QUANTITY_REG_1X)) return ErrorMessage(0x02); //Адрес данных, указанный в запросе, недоступен
-if(!quantity_registers) return 0;//проверяем что количество регистров на чтение > 0
+	//РїСЂРѕРІРµСЂРєР° РєРѕСЂСЂРµРєС‚РЅРѕРіРѕ Р°РґСЂРµСЃР° РІ Р·Р°РїСЂРѕСЃРµ Рё РєРѕР»РёС‡РµСЃС‚РІРѕ СЂРµРіРёСЃС‚СЂРѕРІ РЅР° С‡С‚РµРЅРёРµ
+	char err = check_request(start_adress, quantity_registers);
+	if (err != ERR_NONE)
+		return ErrorMessage(err);
 
-//формируем ответ
-cmTrBuf0[1] = 0x02;//команда
-cmTrBuf0[2] = data_byte;//количество байт данных в ответе
+	//С„РѕСЂРјРёСЂСѓРµРј РѕС‚РІРµС‚
+	cmTrBuf0[1] = 0x02;//РєРѕРјР°РЅРґР°
+	cmTrBuf0[2] = data_byte;//РєРѕР»РёС‡РµСЃС‚РІРѕ Р±Р°Р№С‚ РґР°РЅРЅС‹С… РІ РѕС‚РІРµС‚Рµ
 
-for(i=0; i<quantity_registers; i++) 
+	for (i = 0; i < quantity_registers; i++)
 	{
-	cmTrBuf0[3+i/8] |= ((bool)(NextBit(1x,i))<<(i%8)); //данные
+		cmTrBuf0[3 + i / 8] |= ((bool)(NextBit(1x, i)) << (i % 8)); //РґР°РЅРЅС‹Рµ
 	}//end for()
-CRC16=GetCRC16(cmTrBuf0,data_byte+3);//подсчет КС посылки
-cmTrBuf0[3+data_byte]=Low(CRC16);
-cmTrBuf0[4+data_byte]=Hi(CRC16);
-return (5+data_byte);
+	CRC16 = GetCRC16(cmTrBuf0, data_byte + 3);//РїРѕРґСЃС‡РµС‚ РљРЎ РїРѕСЃС‹Р»РєРё
+	cmTrBuf0[3 + data_byte] = Low(CRC16);
+	cmTrBuf0[4 + data_byte] = Hi(CRC16);
+	return (5 + data_byte);
 } //end Func02(void)
 
 
 
 
-//реализация функции 0х03
-//чтение значений из нескольких регистров хранения (Read Holding Registers)
+//СЂРµР°Р»РёР·Р°С†РёСЏ С„СѓРЅРєС†РёРё 0С…03
+//С‡С‚РµРЅРёРµ Р·РЅР°С‡РµРЅРёР№ РёР· РЅРµСЃРєРѕР»СЊРєРёС… СЂРµРіРёСЃС‚СЂРѕРІ С…СЂР°РЅРµРЅРёСЏ (Read Holding Registers)
 char Func03(void)
 {
-unsigned int CRC16;
-unsigned char i;
+	unsigned int CRC16;
+	unsigned char i;
 
-//проверка корректного адреса в запросе
-if(!(max_adress<=QUANTITY_REG_4X)) return ErrorMessage(0x02); //Адрес данных, указанный в запросе, недоступен
-if(!quantity_registers) return 0;//проверяем что количество регистров на чтение > 0 *******************************************************************************проверить работу***********************
+	//РїСЂРѕРІРµСЂРєР° РєРѕСЂСЂРµРєС‚РЅРѕРіРѕ Р°РґСЂРµСЃР° РІ Р·Р°РїСЂРѕСЃРµ Рё РєРѕР»РёС‡РµСЃС‚РІРѕ СЂРµРіРёСЃС‚СЂРѕРІ РЅР° С‡С‚РµРЅРёРµ
+	char err = check_request(start_adress, quantity_registers);
+	if (err != ERR_NONE)
+		return ErrorMessage(err); //РђРґСЂРµСЃ РґР°РЅРЅС‹С…, СѓРєР°Р·Р°РЅРЅС‹Р№ РІ Р·Р°РїСЂРѕСЃРµ, РЅРµРґРѕСЃС‚СѓРїРµРЅ
 
-//формируем ответ
-cmTrBuf0[1] = 0x03;//команда
-cmTrBuf0[2] = data_2byte;//количество байт данных в ответе
-for(i=0; i<quantity_registers; i++)
+	  //С„РѕСЂРјРёСЂСѓРµРј РѕС‚РІРµС‚
+	cmTrBuf0[1] = 0x03;//РєРѕРјР°РЅРґР°
+	cmTrBuf0[2] = data_2byte;//РєРѕР»РёС‡РµСЃС‚РІРѕ Р±Р°Р№С‚ РґР°РЅРЅС‹С… РІ РѕС‚РІРµС‚Рµ
+	for (i = 0; i < quantity_registers; i++)
 	{
-	cmTrBuf0[3+2*i] = Hi(RegNum4x[start_adress+i]);//данные старший байт
-	cmTrBuf0[4+2*i] = Low(RegNum4x[start_adress+i]);//данные младший байт
+		cmTrBuf0[3 + 2 * i] = Hi(RegNum4x[start_adress + i]);//РґР°РЅРЅС‹Рµ СЃС‚Р°СЂС€РёР№ Р±Р°Р№С‚
+		cmTrBuf0[4 + 2 * i] = Low(RegNum4x[start_adress + i]);//РґР°РЅРЅС‹Рµ РјР»Р°РґС€РёР№ Р±Р°Р№С‚
 	} //end for()
-CRC16=GetCRC16(cmTrBuf0,data_2byte+3);//подсчет КС посылки
-cmTrBuf0[3+data_2byte]=Low(CRC16);
-cmTrBuf0[4+data_2byte]=Hi(CRC16);
-return (5+data_2byte);
+	CRC16 = GetCRC16(cmTrBuf0, data_2byte + 3);//РїРѕРґСЃС‡РµС‚ РљРЎ РїРѕСЃС‹Р»РєРё
+	cmTrBuf0[3 + data_2byte] = Low(CRC16);
+	cmTrBuf0[4 + data_2byte] = Hi(CRC16);
+	return (5 + data_2byte);
 } //end Func03(void)
 
 
 
 
-//реализация функции 0х04
-//чтение значения аналоговых входов (Read Input Registers)
+//СЂРµР°Р»РёР·Р°С†РёСЏ С„СѓРЅРєС†РёРё 0С…04
+//С‡С‚РµРЅРёРµ Р·РЅР°С‡РµРЅРёСЏ Р°РЅР°Р»РѕРіРѕРІС‹С… РІС…РѕРґРѕРІ (Read Input Registers)
 char Func04(void)
 {
-unsigned int CRC16;
-unsigned char i;
+	unsigned int CRC16;
+	unsigned char i;
 
-//проверка корректного адреса в запросе
-if(!(max_adress<=QUANTITY_REG_3X)) return ErrorMessage(0x02); //Адрес данных, указанный в запросе, недоступен
-if(!quantity_registers) return 0;//проверяем что количество регистров на чтение > 0 *******************************************************************************проверить работу***********************
+	//РїСЂРѕРІРµСЂРєР° РєРѕСЂСЂРµРєС‚РЅРѕРіРѕ Р°РґСЂРµСЃР° РІ Р·Р°РїСЂРѕСЃРµ Рё РєРѕР»РёС‡РµСЃС‚РІРѕ СЂРµРіРёСЃС‚СЂРѕРІ РЅР° С‡С‚РµРЅРёРµ
+	char err = check_request(start_adress, quantity_registers);
+	if (err != ERR_NONE)
+		return ErrorMessage(err); //РђРґСЂРµСЃ РґР°РЅРЅС‹С…, СѓРєР°Р·Р°РЅРЅС‹Р№ РІ Р·Р°РїСЂРѕСЃРµ, РЅРµРґРѕСЃС‚СѓРїРµРЅ
 
-//формируем ответ
-cmTrBuf0[1] = 0x04;//команда
-cmTrBuf0[2] = data_2byte;//количество байт данных в ответе
-for(i=0; i<quantity_registers; i++)
+	  //С„РѕСЂРјРёСЂСѓРµРј РѕС‚РІРµС‚
+	cmTrBuf0[1] = 0x04;//РєРѕРјР°РЅРґР°
+	cmTrBuf0[2] = data_2byte;//РєРѕР»РёС‡РµСЃС‚РІРѕ Р±Р°Р№С‚ РґР°РЅРЅС‹С… РІ РѕС‚РІРµС‚Рµ
+	for (i = 0; i < quantity_registers; i++)
 	{
-	cmTrBuf0[3+2*i] = Hi(RegNum3x[start_adress+i]);//данные старший байт
-	cmTrBuf0[4+2*i] = Low(RegNum3x[start_adress+i]);//данные младший байт
+		cmTrBuf0[3 + 2 * i] = Hi(RegNum3x[start_adress + i]);//РґР°РЅРЅС‹Рµ СЃС‚Р°СЂС€РёР№ Р±Р°Р№С‚
+		cmTrBuf0[4 + 2 * i] = Low(RegNum3x[start_adress + i]);//РґР°РЅРЅС‹Рµ РјР»Р°РґС€РёР№ Р±Р°Р№С‚
 	} //end for()
-CRC16=GetCRC16(cmTrBuf0,data_2byte+3);//подсчет КС посылки
-cmTrBuf0[3+data_2byte]=Low(CRC16);
-cmTrBuf0[4+data_2byte]=Hi(CRC16);
-return (5+data_2byte);
+	CRC16 = GetCRC16(cmTrBuf0, data_2byte + 3);//РїРѕРґСЃС‡РµС‚ РљРЎ РїРѕСЃС‹Р»РєРё
+	cmTrBuf0[3 + data_2byte] = Low(CRC16);
+	cmTrBuf0[4 + data_2byte] = Hi(CRC16);
+	return (5 + data_2byte);
 } //end Func04(void)
 
 
 
 
-//реализация функции 0х05
-//запись значения одного флага (Force Single Coil)
+//СЂРµР°Р»РёР·Р°С†РёСЏ С„СѓРЅРєС†РёРё 0С…05
+//Р·Р°РїРёСЃСЊ Р·РЅР°С‡РµРЅРёСЏ РѕРґРЅРѕРіРѕ С„Р»Р°РіР° (Force Single Coil)
 char Func05(void)
 {
-//проверка корректного адреса в запросе
-if(!(reg_adress<=QUANTITY_REG_0X)) return ErrorMessage(0x02); //Адрес данных, указанный в запросе, недоступен
+	//РїСЂРѕРІРµСЂРєР° РєРѕСЂСЂРµРєС‚РЅРѕРіРѕ Р°РґСЂРµСЃР° РІ Р·Р°РїСЂРѕСЃРµ
+	//РїСЂРѕРІРµСЂРєР° РєРѕСЂСЂРµРєС‚РЅРѕРіРѕ Р°РґСЂРµСЃР° РІ Р·Р°РїСЂРѕСЃРµ Рё РєРѕР»РёС‡РµСЃС‚РІРѕ СЂРµРіРёСЃС‚СЂРѕРІ РЅР° С‡С‚РµРЅРёРµ
+	char err = check_request(start_adress, 1);
+	if (err != ERR_NONE)
+		return ErrorMessage(err); //РђРґСЂРµСЃ РґР°РЅРЅС‹С…, СѓРєР°Р·Р°РЅРЅС‹Р№ РІ Р·Р°РїСЂРѕСЃРµ, РЅРµРґРѕСЃС‚СѓРїРµРЅ
 
-//Значение FF 00 hex устанавливает флаг(1).
-//Значение 00 00 hex сбрасывает флаг (0). 
-//Другие значения не меняют флаг
-//формируем ответ, возвращая полученное сообщение
-if((value==0xFF00)||(value==0x0000))
+	  //Р—РЅР°С‡РµРЅРёРµ FF 00 hex СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚ С„Р»Р°Рі(1).
+	  //Р—РЅР°С‡РµРЅРёРµ 00 00 hex СЃР±СЂР°СЃС‹РІР°РµС‚ С„Р»Р°Рі (0). 
+	  //Р”СЂСѓРіРёРµ Р·РЅР°С‡РµРЅРёСЏ РЅРµ РјРµРЅСЏСЋС‚ С„Р»Р°Рі
+	  //С„РѕСЂРјРёСЂСѓРµРј РѕС‚РІРµС‚, РІРѕР·РІСЂР°С‰Р°СЏ РїРѕР»СѓС‡РµРЅРЅРѕРµ СЃРѕРѕР±С‰РµРЅРёРµ
+	if ((value == 0xFF00) || (value == 0x0000))
 	{
-	if(value)
+		if (value)
 		{
-		RegNum0x[I_byte] |= (1<<I_bit);
+			RegNum0x[I_byte] |= (1 << I_bit);
 		}
-	else 
+		else
 		{
-		RegNum0x[I_byte] &= ~(1<<I_bit);
+			RegNum0x[I_byte] &= ~(1 << I_bit);
 		}
-	cmTrBuf0[1] = cmRcBuf0[1];
-	cmTrBuf0[2] = cmRcBuf0[2];
-	cmTrBuf0[3] = cmRcBuf0[3];
-	cmTrBuf0[4] = cmRcBuf0[4];
-	cmTrBuf0[5] = cmRcBuf0[5];
-	cmTrBuf0[6] = cmRcBuf0[6];
-	cmTrBuf0[7] = cmRcBuf0[7];
-	return 8;
+		cmTrBuf0[1] = cmRcBuf0[1];
+		cmTrBuf0[2] = cmRcBuf0[2];
+		cmTrBuf0[3] = cmRcBuf0[3];
+		cmTrBuf0[4] = cmRcBuf0[4];
+		cmTrBuf0[5] = cmRcBuf0[5];
+		cmTrBuf0[6] = cmRcBuf0[6];
+		cmTrBuf0[7] = cmRcBuf0[7];
+		return 8;
 	} //end if()
-return ErrorMessage(0x03); //Значение, содержащееся в поле данных запроса, является недопустимой величиной
+	return ErrorMessage(0x03); //Р—РЅР°С‡РµРЅРёРµ, СЃРѕРґРµСЂР¶Р°С‰РµРµСЃСЏ РІ РїРѕР»Рµ РґР°РЅРЅС‹С… Р·Р°РїСЂРѕСЃР°, СЏРІР»СЏРµС‚СЃСЏ РЅРµРґРѕРїСѓСЃС‚РёРјРѕР№ РІРµР»РёС‡РёРЅРѕР№
 } //end Func05(void)
 
 
 
 
-//реализация функции 0х06
-//запись значения в один регистр хранения (Preset Single Register)
+//СЂРµР°Р»РёР·Р°С†РёСЏ С„СѓРЅРєС†РёРё 0С…06
+//Р·Р°РїРёСЃСЊ Р·РЅР°С‡РµРЅРёСЏ РІ РѕРґРёРЅ СЂРµРіРёСЃС‚СЂ С…СЂР°РЅРµРЅРёСЏ (Preset Single Register)
 char Func06(void)
 {
-//проверка корректного адреса в запросе
-if(!(reg_adress<=QUANTITY_REG_4X)) return ErrorMessage(0x02); //Адрес данных, указанный в запросе, недоступен
-//проверка корректных данных в запросе
+	//РїСЂРѕРІРµСЂРєР° РєРѕСЂСЂРµРєС‚РЅРѕРіРѕ Р°РґСЂРµСЃР° РІ Р·Р°РїСЂРѕСЃРµ Рё РєРѕР»РёС‡РµСЃС‚РІРѕ СЂРµРіРёСЃС‚СЂРѕРІ РЅР° С‡С‚РµРЅРёРµ
+	char err = check_request(start_adress, 1);
+	if (err != ERR_NONE)
+		return ErrorMessage(err); //РђРґСЂРµСЃ РґР°РЅРЅС‹С…, СѓРєР°Р·Р°РЅРЅС‹Р№ РІ Р·Р°РїСЂРѕСЃРµ, РЅРµРґРѕСЃС‚СѓРїРµРЅ
 
-//формируем ответ, возвращая полученное сообщение
-if(1)//при необходимости поставить контроль значений
+	  //С„РѕСЂРјРёСЂСѓРµРј РѕС‚РІРµС‚, РІРѕР·РІСЂР°С‰Р°СЏ РїРѕР»СѓС‡РµРЅРЅРѕРµ СЃРѕРѕР±С‰РµРЅРёРµ
+	if (1)//РїСЂРё РЅРµРѕР±С…РѕРґРёРјРѕСЃС‚Рё РїРѕСЃС‚Р°РІРёС‚СЊ РєРѕРЅС‚СЂРѕР»СЊ Р·РЅР°С‡РµРЅРёР№
 	{
-	RegNum4x[reg_adress] = value;
+		RegNum4x[reg_adress] = value;
+		cmTrBuf0[1] = cmRcBuf0[1];
+		cmTrBuf0[2] = cmRcBuf0[2];
+		cmTrBuf0[3] = cmRcBuf0[3];
+		cmTrBuf0[4] = cmRcBuf0[4];
+		cmTrBuf0[5] = cmRcBuf0[5];
+		cmTrBuf0[6] = cmRcBuf0[6];
+		cmTrBuf0[7] = cmRcBuf0[7];
+		return 8;
+	} //end if()
+	else
+	{
+		return ErrorMessage(0x03);//Р—РЅР°С‡РµРЅРёРµ, СЃРѕРґРµСЂР¶Р°С‰РµРµСЃСЏ РІ РїРѕР»Рµ РґР°РЅРЅС‹С… Р·Р°РїСЂРѕСЃР°, СЏРІР»СЏРµС‚СЃСЏ РЅРµРґРѕРїСѓСЃС‚РёРјРѕР№ РІРµР»РёС‡РёРЅРѕР№
+	}
+	return 0;
+} //end Func06(void)
+
+
+//СЂРµР°Р»РёР·Р°С†РёСЏ С„СѓРЅРєС†РёРё 0С…10
+//Р—Р°РїРёСЃСЊ Р·РЅР°С‡РµРЅРёР№ РІ РЅРµСЃРєРѕР»СЊРєРѕ СЂРµРіРёСЃС‚СЂРѕРІ С…СЂР°РЅРµРЅРёСЏ (Write Holding Registers)
+char Func16(void)
+{
+	//РїСЂРѕРІРµСЂРєР° РєРѕСЂСЂРµРєС‚РЅРѕРіРѕ Р°РґСЂРµСЃР° РІ Р·Р°РїСЂРѕСЃРµ Рё РєРѕР»РёС‡РµСЃС‚РІРѕ СЂРµРіРёСЃС‚СЂРѕРІ РЅР° С‡С‚РµРЅРёРµ
+	char err = check_request(start_adress, quantity_registers);
+	if (err != ERR_NONE)
+		return ErrorMessage(err); //РђРґСЂРµСЃ РґР°РЅРЅС‹С…, СѓРєР°Р·Р°РЅРЅС‹Р№ РІ Р·Р°РїСЂРѕСЃРµ, РЅРµРґРѕСЃС‚СѓРїРµРЅ
+
+	  //РїСЂРё РЅРµРѕР±С…РѕРґРёРјРѕСЃС‚Рё РїРѕСЃС‚Р°РІРёС‚СЊ РєРѕРЅС‚СЂРѕР»СЊ Р·РЅР°С‡РµРЅРёР№
+	if (!true)
+	{//РћРґРЅРѕ РёР· Р·РЅР°С‡РµРЅРёР№, СЃРѕРґРµСЂР¶Р°С‰РµРµСЃСЏ РІ РїРѕР»Рµ РґР°РЅРЅС‹С… Р·Р°РїСЂРѕСЃР°, СЏРІР»СЏРµС‚СЃСЏ РЅРµРґРѕРїСѓСЃС‚РёРјРѕР№ РІРµР»РёС‡РёРЅРѕР№
+		return ErrorMessage(ERR_ILLEGAL_DATA_VALUE);
+	}
+
+	for (int i = 0; i < num_to_write / 2; i++)
+	{
+		unsigned char* p = data_pointer + i * 2;
+		RegNum4x[start_adress + i] = ((*p) << 8) + *(p + 1);
+	}
+
+	unsigned int CRC16;
+	//С„РѕСЂРјРёСЂСѓРµРј РѕС‚РІРµС‚
 	cmTrBuf0[1] = cmRcBuf0[1];
 	cmTrBuf0[2] = cmRcBuf0[2];
 	cmTrBuf0[3] = cmRcBuf0[3];
 	cmTrBuf0[4] = cmRcBuf0[4];
 	cmTrBuf0[5] = cmRcBuf0[5];
-	cmTrBuf0[6] = cmRcBuf0[6];
-	cmTrBuf0[7] = cmRcBuf0[7];
+	CRC16 = GetCRC16(cmTrBuf0, 6);//РїРѕРґСЃС‡РµС‚ РљРЎ РїРѕСЃС‹Р»РєРё
+	cmTrBuf0[6] = Low(CRC16);
+	cmTrBuf0[7] = Hi(CRC16);
 	return 8;
-	} //end if()
-else
-	{
-	return ErrorMessage(0x03);//Значение, содержащееся в поле данных запроса, является недопустимой величиной
-	}
-return 0;
-} //end Func06(void)
+} //end Func16(void)
 
 
 
 
-//-----------------------------Прерывания-------------------------------
 
-//прерывание по завершению получения данных 
-//получение запроса от мастера
-ISR(USART_RXC_vect) 
+//-----------------------------РџСЂРµСЂС‹РІР°РЅРёСЏ-------------------------------
+
+//РїСЂРµСЂС‹РІР°РЅРёРµ РїРѕ Р·Р°РІРµСЂС€РµРЅРёСЋ РїРѕР»СѓС‡РµРЅРёСЏ РґР°РЅРЅС‹С… 
+//РїРѕР»СѓС‡РµРЅРёРµ Р·Р°РїСЂРѕСЃР° РѕС‚ РјР°СЃС‚РµСЂР°
+ISR(USART_RXC_vect)
 {
-char cTempUART;
+	char cTempUART;
 
-cTempUART=UDR;
+	cTempUART = UDR;
 
-if  (UCSRA&(1<<FE)) //FE-ошибка кадра   ***может не работать на других МК****
+	if (UCSRA & (1 << FE)) //FE-РѕС€РёР±РєР° РєР°РґСЂР°   ***РјРѕР¶РµС‚ РЅРµ СЂР°Р±РѕС‚Р°С‚СЊ РЅР° РґСЂСѓРіРёС… РњРљ****
 	{
-	UDR = 0xFE; 
-	return;
-	}   
-
-if (!StartRec)//если это первый байт, то начинаем прием
-	{
-	StartRec=true;
-	RcCount=0;
-	cmRcBuf0[RcCount++]=cTempUART;
-	StartTimer0();
+		UDR = 0xFE;
+		return;
 	}
-else  // (StartRec==0) //продолжаем прием
+
+	if (!StartRec)//РµСЃР»Рё СЌС‚Рѕ РїРµСЂРІС‹Р№ Р±Р°Р№С‚, С‚Рѕ РЅР°С‡РёРЅР°РµРј РїСЂРёРµРј
 	{
-    if (RcCount<MAX_LENGHT_REC_BUF) //если еще не конец буфера
+		StartRec = true;
+		RcCount = 0;
+		cmRcBuf0[RcCount++] = cTempUART;
+		StartTimer0();
+	}
+	else  // (StartRec==0) //РїСЂРѕРґРѕР»Р¶Р°РµРј РїСЂРёРµРј
+	{
+		if (RcCount < MAX_LENGHT_REC_BUF) //РµСЃР»Рё РµС‰Рµ РЅРµ РєРѕРЅРµС† Р±СѓС„РµСЂР°
 		{
-		cmRcBuf0[RcCount++]=cTempUART;
+			cmRcBuf0[RcCount++] = cTempUART;
 		}
-	else //буфер переполнен
+		else //Р±СѓС„РµСЂ РїРµСЂРµРїРѕР»РЅРµРЅ
 		{
-		cmRcBuf0[MAX_LENGHT_REC_BUF-1]=cTempUART;
+			cmRcBuf0[MAX_LENGHT_REC_BUF - 1] = cTempUART;
 		}
-    StartTimer0();//перезапуск таймера
+		StartTimer0();//РїРµСЂРµР·Р°РїСѓСЃРє С‚Р°Р№РјРµСЂР°
 	} //end else if (StartRec==0)
 } //end ISR(USART_RXC_vect)
 
 
-//прерывание по опустошению регистра данных (UDR)
-//отправка ответа
+//РїСЂРµСЂС‹РІР°РЅРёРµ РїРѕ РѕРїСѓСЃС‚РѕС€РµРЅРёСЋ СЂРµРіРёСЃС‚СЂР° РґР°РЅРЅС‹С… (UDR)
+//РѕС‚РїСЂР°РІРєР° РѕС‚РІРµС‚Р°
 ISR(USART_UDRE_vect)
 {
-if (TrCount<cNumTrByte0)
+	if (TrCount < cNumTrByte0)
 	{
-    UDR=cmTrBuf0[TrCount];
-    TrCount++;
+		UDR = cmTrBuf0[TrCount];
+		TrCount++;
 	} //end if
-else
+	else
 	{
-    StopTrans();
-    TrCount=0;
+		StopTrans();
+		TrCount = 0;
 	} //end else
 }//end ISR(USART_UDRE_vect)
 
 
-//прерывание таймера/счетчика 0 по переполнению
-//проверка окончания приема посылки, тишина >=3,5 символа
+//РїСЂРµСЂС‹РІР°РЅРёРµ С‚Р°Р№РјРµСЂР°/СЃС‡РµС‚С‡РёРєР° 0 РїРѕ РїРµСЂРµРїРѕР»РЅРµРЅРёСЋ
+//РїСЂРѕРІРµСЂРєР° РѕРєРѕРЅС‡Р°РЅРёСЏ РїСЂРёРµРјР° РїРѕСЃС‹Р»РєРё, С‚РёС€РёРЅР° >=3,5 СЃРёРјРІРѕР»Р°
 ISR(TIMER0_OVF_vect)
 {
-if (StartRec)
+	if (StartRec)
 	{
-    StartRec=false; //посылка принята
-    cNumRcByte0=RcCount;  //кол-во принятых байт
-	bModBus=true;//
-    StopTimer0();//остановим таймер
+		StartRec = false; //РїРѕСЃС‹Р»РєР° РїСЂРёРЅСЏС‚Р°
+		cNumRcByte0 = RcCount;  //РєРѕР»-РІРѕ РїСЂРёРЅСЏС‚С‹С… Р±Р°Р№С‚
+		bModBus = true;//
+		StopTimer0();//РѕСЃС‚Р°РЅРѕРІРёРј С‚Р°Р№РјРµСЂ
 	} //end if
 }//end ISR(TIMER0_OVF_vect)
-
