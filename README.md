@@ -1,5 +1,6 @@
 # AVR_ModBus
-Tested(ATMega8)
+Tested(ATMega8
+       ATMega16)
 
 RU:   
 Модуль для AVR. Реализация протокола MODBUS RTU. Функции 0х01 - 0х06.
