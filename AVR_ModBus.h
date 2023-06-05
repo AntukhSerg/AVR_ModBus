@@ -1,6 +1,6 @@
 /*
 * Код для работы по протоколу modbus
-* 
+*
 * void main( void )
 * {
 * InitModBus();
@@ -10,8 +10,8 @@
 *	CheckModBus();
 *   } //end while(1)
 * } //end main()
-* 
-* необходимо провести инициализацию протокола InitModBus(), и периодически запускать 
+*
+* необходимо провести инициализацию протокола InitModBus(), и периодически запускать
 * функцию CheckModBus() для проверки наличия запроса и формирования/отправки ответа.
 * данные заранее вносятся в глобальные переменные RegNum0x[], RegNum1x[], RegNum3x[],
 * RegNum4x[] и беруться из них же. Переменные RegNumYx[] соответствуют номерам регистров:
@@ -48,6 +48,12 @@
 #define QUANTITY_REG_3X 4 //количество аналоговых входов (AI) / r0x04
 #define QUANTITY_REG_4X 6 //количество аналоговых выходов (AO) r0x03, w0x06, w0x10(16)
 
+// Возможные ошибки для ответа мастеру
+#define ERR_NONE                    0x00
+#define ERR_ILLEGAL_FUNCTION        0x01
+#define ERR_ILLEGAL_DATA_ADDRESS    0x02
+#define ERR_ILLEGAL_DATA_VALUE      0x03
+
 //запуск таймера0 для контроля паузы 3,5символа
 #define StartTimer0() TCCR0=1<<CS02;  TCNT0=130; 
 // CS02 CS01 CS00 clk/n
@@ -73,8 +79,8 @@
 
 
 //регистры (modbus)  
-unsigned char RegNum0x[(QUANTITY_REG_0X+7)/8];//1-9999 Discrete Output Coils
-unsigned char RegNum1x[(QUANTITY_REG_1X+7)/8];//10001-19999 Discrete Input Contacts
+unsigned char RegNum0x[(QUANTITY_REG_0X + 7) / 8];//1-9999 Discrete Output Coils
+unsigned char RegNum1x[(QUANTITY_REG_1X + 7) / 8];//10001-19999 Discrete Input Contacts
 unsigned int RegNum3x[QUANTITY_REG_3X];//30001-39999 Analog Input Registers
 unsigned int RegNum4x[QUANTITY_REG_4X];//40001-49999 Analog Output Holding Registers
 
