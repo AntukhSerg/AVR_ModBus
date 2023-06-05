@@ -34,7 +34,7 @@ c адресацией соответственно от 0 до 256.
 
 
 EN:   
-Module for AVR. Implementation of the MODBUS RTU protocol. Function Code 0x01 - 0x06.
+Module for AVR. Implementation of the MODBUS RTU protocol. Function Code 0x01 - 0x06, 0x10.
 Quoting code
 Use Modbus
 ```
